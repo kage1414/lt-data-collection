@@ -1,6 +1,6 @@
 import React from 'react';
 import Row from './Row.jsx';
-import moment from 'moment';
+import Statistics from './Statistics.jsx';
 
 const Table = (props) => {
 
@@ -14,8 +14,13 @@ const Table = (props) => {
 
 
   return (
+    <>
+    <button onClick={() => {
+      props.exportTable();
+    }}></button>
     <table id={'exportTable'}>
       <thead>
+        <Statistics statistics={props.statistics}/>
         <tr>
           {headers.map((header, idx) => {
             return <th key={JSON.stringify(props.convertIdxToLetter(idx) + idx)} style={{border: '1px solid black', backgoundColor: '#c7c7c7', padding: '10px'}}>{header.id}</th>
@@ -55,6 +60,7 @@ const Table = (props) => {
         })}
       </tbody>
     </table>
+    </>
   )
 
 }

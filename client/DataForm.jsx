@@ -16,6 +16,7 @@ const DataForm = (props) => {
         <input
           type={'text'}
           id={'spreadsheetURL'}
+          defaultValue={props.spreadsheetUrl}
           onChange={(e) => {
             let url = e.target.value;
             props.setSpreadsheetUrl(url);
@@ -108,7 +109,7 @@ const DataForm = (props) => {
         </label>
         <input
           type={'number'}
-          defaultValue={3}
+          defaultValue={props.maxPointsPerQuestion}
           min={1}
           onChange={(e) => {
             props.setMaxPointsPerQuestion(Number(e.target.value))
@@ -127,6 +128,7 @@ const DataForm = (props) => {
         </label>
         <select
           id={'chooseTeacher'}
+          defaultValue={props.teacherFilter}
           onChange={(e) => {
             props.setTeacherFilter(e.target.value)
           }}>
@@ -142,6 +144,7 @@ const DataForm = (props) => {
         </label>
         <select
           id={'chooseClass'}
+          defaultValue={props.classFilter}
           onChange={(e) => {
             props.setClassFilter(e.target.value)
           }}>

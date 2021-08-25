@@ -1,14 +1,15 @@
 import React, { useState, useEffect } from 'react';
-import { CookiesProvider } from 'react-cookie';
 import DataForm from './DataForm.jsx';
 import Table from './Table.jsx';
 import moment from 'moment';
 import _ from 'lodash';
+import { useCookies } from 'react-cookie';
 
 const App = () => {
+  const [cookies, setCookie] = useCookies(['lawrenceNorthSux'])
 
-  let [spreadsheetUrl, setSpreadsheetUrl] = useState('');
-  let [modifiedUrl, setModifiedUrl] = useState('');
+  let [spreadsheetUrl, setSpreadsheetUrl] = useState(cookies.spreadsheetUrl || '');
+  let [modifiedUrl, setModifiedUrl] = useState(cookies.modifiedUrl || '');
   let [json, setJson] = useState(undefined);
   let [refactoredJson, setRefactoredJson] = useState(undefined)
   let [teacherOptions, updateTeacherOptions] = useState(['All']);
@@ -23,28 +24,37 @@ const App = () => {
   let [endOfDateRange, setEndOfDateRange] = useState(moment(Date.now()).format('YYYY-MM-DD'))
   let [maxDate, setMaxDate] = useState(moment(Date.now()).format('YYYY-MM-DD'))
   let [dateIdx, setDateIdx] = useState(0);
-  let [maxPointsPerQuestion, setMaxPointsPerQuestion] = useState(3);
-
+  let [maxPointsPerQuestion, setMaxPointsPerQuestion] = useState(cookies.maxPointsPerQuestion || 3);
+  let [loading, setLoading] = useState(false);
+  let [statistics, setStatistics] = useState({
+    'Meets': 0,
+    'Exceeds': 0,
+    'Not Met': 0
+  });
+  
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    setLoading(true)
+    
+    fetch(modifiedUrl)
+    .then(res => res.text())
+    .then(text => {
+      const responseJson = JSON.parse(text.substr(47).slice(0, -2));
+      setJson(responseJson);
+    })
+    
+  }
 
   const debouncedSetRefactoredJson = _.debounce((json) => {
     return setRefactoredJson(json);
   }, 1000);
 
-  const debouncedSetStartOfDateRange = _.debounce(setStartOfDateRange, 1000)
-  const debouncedSetEndOfDateRange = _.debounce(setEndOfDateRange, 1000)
-
-  const handleSubmit = (e) => {
-    e.preventDefault();
-
-    fetch(modifiedUrl)
-      .then(res => res.text())
-      .then(text => {
-        console.log(text)
-          const responseJson = JSON.parse(text.substr(47).slice(0, -2));
-          setJson(responseJson);
-      })
-
-  }
+  const debouncedSetStartOfDateRange = _.debounce((date) => {
+    setStartOfDateRange(date);
+  }, 1000)
+  const debouncedSetEndOfDateRange = _.debounce((date) => {
+    setEndOfDateRange(date);
+  }, 1000)
 
 
   const transformUrl = (url) => {
@@ -88,6 +98,11 @@ const App = () => {
   const refactorJson = (json) => {
     let newJson = JSON.parse(JSON.stringify(json));
     let length = 0;
+    let newStats = {
+      'Met': 0,
+      'In Progress': 0,
+      'Not Met': 0
+    };
 
     for (let key in gradedColumns) {
       if (gradedColumns[key]) {
@@ -97,7 +112,7 @@ const App = () => {
 
     newJson.table.cols.push({label: 'Total', id: convertIdxToLetter(newJson.table.cols.length)})
     newJson.table.cols.push({label: 'Average', id: convertIdxToLetter(newJson.table.cols.length + 1)})
-    newJson.table.cols.push({label: 'E, M, NM', id: convertIdxToLetter(newJson.table.cols.length + 2)})
+    newJson.table.cols.push({label: 'M, IP, NM', id: convertIdxToLetter(newJson.table.cols.length + 2)})
 
     for (let i = 0; i < newJson.table.rows.length; i++) {
       let total = 0;
@@ -128,7 +143,8 @@ const App = () => {
 
 
       let average = total / length;
-      let standard = (average / maxPointsPerQuestion) >= 0.8 ? {v: 'Exceeds', color: 'green'} : (average/ maxPointsPerQuestion) >= 0.5 ? {v: 'Meets', color: 'yellow'} : {v: 'Not Met', color: 'red'};
+      let standard = (average / maxPointsPerQuestion) >= 0.8 ? {v: 'Met', color: 'green'} : (average/ maxPointsPerQuestion) >= 0.5 ? {v: 'In Progress', color: 'yellow'} : {v: 'Not Met', color: 'red'};
+      newStats[standard.v]++;
       average = isNaN(average) ? ' ' : average;
       newJson.table.rows[i].c.push({v: total})
       newJson.table.rows[i].c.push({v: average})
@@ -137,9 +153,12 @@ const App = () => {
     }
 
     setRefactoredJson(newJson);
+    setStatistics(newStats);
+    setLoading(false);
   }
 
   const debouncedRefactorJson = _.debounce((json) => {
+    setLoading(true)
     refactorJson(json)
   }, 1000);
 
@@ -177,7 +196,7 @@ const App = () => {
     }
 
 
-  }, [gradedColumns, maxPointsPerQuestion]);
+  }, [gradedColumns, maxPointsPerQuestion, startOfDateRange, endOfDateRange]);
 
   useEffect(() => {
 
@@ -220,29 +239,35 @@ const App = () => {
   }, [classIdx])
 
   useEffect(() => {
-    // console.clear()
-    console.log('spreadsheetUrl', spreadsheetUrl)
-    console.log('modifiedUrl', modifiedUrl)
-    console.log('json', json)
-    console.log('refactoredJson', refactoredJson)
-    console.log('teacherOptions', teacherOptions)
-    console.log('classOptions', classOptions)
-    console.log('teacherIdx', teacherIdx)
-    console.log('teacherFilter', teacherFilter) 
-    console.log('columnLetters', columnLetters)
-    console.log('classFilter', classFilter)
-    console.log('classIdx', classIdx)
-    console.log('gradedColumns', gradedColumns)
-    console.log('startOfDateRange', startOfDateRange)
-    console.log('endOfDateRange', endOfDateRange)
-    console.log('maxPointsPerQuestion', maxPointsPerQuestion)
-  }, [spreadsheetUrl, modifiedUrl, teacherOptions, classOptions, classFilter, teacherIdx, teacherFilter, columnLetters,json, refactoredJson, gradedColumns, startOfDateRange, endOfDateRange, maxPointsPerQuestion])
+     setCookie('spreadsheetUrl', spreadsheetUrl, { path: '/' });
+    setCookie('modifiedUrl', modifiedUrl, { path: '/' });
+    setCookie('teacherOptions', teacherOptions, { path: '/' });
+    setCookie('classOptions', classOptions, { path: '/' });
+    setCookie('classFilter', classFilter, { path: '/' });
+    setCookie('teacherIdx', teacherIdx, { path: '/' });
+    setCookie('teacherFilter', teacherFilter, { path: '/' });
+    setCookie('gradedColumns', gradedColumns, { path: '/' });
+    setCookie('maxPointsPerQuestion', maxPointsPerQuestion, { path: '/' });
+  }, [
+    spreadsheetUrl,
+    teacherOptions,
+    classOptions,
+    classFilter,
+    teacherIdx,
+    teacherFilter,
+    gradedColumns,
+    startOfDateRange,
+    endOfDateRange,
+    maxPointsPerQuestion
+  ])
 
 
 
   return (
     <div>
-      <span>{'LT Data Collection'}</span>
+      <span>{'LT Data Collection'}
+      {loading && <span dangerouslySetInnerHTML={{__html: '<img id="loading" class="item fade-in-fast" src="https://cdnjs.cloudflare.com/ajax/libs/bxslider/4.2.5/images/bx_loader.gif" width="20" height="20">'}}></span>}
+      </span>
       <DataForm
         handleSubmit={handleSubmit}
         setSpreadsheetUrl={setSpreadsheetUrl}
@@ -263,6 +288,10 @@ const App = () => {
         maxDate={maxDate}
         setDateIdx={setDateIdx}
         setMaxPointsPerQuestion={setMaxPointsPerQuestion}
+        maxPointsPerQuestion={maxPointsPerQuestion}
+        spreadsheetUrl={spreadsheetUrl}
+        teacherFilter={teacherFilter}
+        classFilter={classFilter}
       />
       {refactoredJson && <Table
         table={refactoredJson.table}
@@ -274,6 +303,7 @@ const App = () => {
         dateIdx={dateIdx}
         startOfDateRange={startOfDateRange}
         endOfDateRange={endOfDateRange}
+        statistics={statistics}
       ></Table>}
     </div>
   )
