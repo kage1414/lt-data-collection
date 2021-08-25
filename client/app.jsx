@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { CookiesProvider } from 'react-cookie';
 import DataForm from './DataForm.jsx';
 import Table from './Table.jsx';
+import moment from 'moment';
+import _ from 'lodash';
 
 const App = () => {
 
@@ -16,8 +18,20 @@ const App = () => {
   let [classIdx, setClassIdx] = useState(0)
   let [classFilter, setClassFilter] = useState('All');
   let [columnLetters, setColumnLetters] = useState([]);
-  let [firstRowIsHeader, setFirstRowIsHeader] = useState(true);
-  let [gradedColumns, setGradedColumns] = useState([5, 6]);
+  let [gradedColumns, setGradedColumns] = useState({});
+  let [startOfDateRange, setStartOfDateRange] = useState(moment(Date.now() - 2592000000).format('YYYY-MM-DD'));
+  let [endOfDateRange, setEndOfDateRange] = useState(moment(Date.now()).format('YYYY-MM-DD'))
+  let [maxDate, setMaxDate] = useState(moment(Date.now()).format('YYYY-MM-DD'))
+  let [dateIdx, setDateIdx] = useState(0);
+  let [maxPointsPerQuestion, setMaxPointsPerQuestion] = useState(3);
+
+
+  const debouncedSetRefactoredJson = _.debounce((json) => {
+    return setRefactoredJson(json);
+  }, 1000);
+
+  const debouncedSetStartOfDateRange = _.debounce(setStartOfDateRange, 1000)
+  const debouncedSetEndOfDateRange = _.debounce(setEndOfDateRange, 1000)
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -25,8 +39,8 @@ const App = () => {
     fetch(modifiedUrl)
       .then(res => res.text())
       .then(text => {
+        console.log(text)
           const responseJson = JSON.parse(text.substr(47).slice(0, -2));
-          console.log(responseJson)
           setJson(responseJson);
       })
 
@@ -65,8 +79,71 @@ const App = () => {
     }
   }
 
-  useEffect(() => {
+  const handleGradedColumns = (columns) => {
 
+    setGradedColumns(columns);
+
+  }
+
+  const refactorJson = (json) => {
+    let newJson = JSON.parse(JSON.stringify(json));
+    let length = 0;
+
+    for (let key in gradedColumns) {
+      if (gradedColumns[key]) {
+        length++;
+      }
+    }
+
+    newJson.table.cols.push({label: 'Total', id: convertIdxToLetter(newJson.table.cols.length)})
+    newJson.table.cols.push({label: 'Average', id: convertIdxToLetter(newJson.table.cols.length + 1)})
+    newJson.table.cols.push({label: 'E, M, NM', id: convertIdxToLetter(newJson.table.cols.length + 2)})
+
+    for (let i = 0; i < newJson.table.rows.length; i++) {
+      let total = 0;
+
+      for (let j = 0; j < newJson.table.rows[i].c.length; j++) {
+
+        if (newJson.table.rows[i].c[i] === null) {
+          newJson.table.rows[i].c[j] = {v: null}
+        }
+
+        if (newJson.table.rows[i].c[j]) {
+          if (newJson.table.rows[i].c[j].v) {
+            if (newJson.table.rows[i].c[j].v.toString().slice(0, 4) === 'Date') {
+              newJson.table.rows[i].c[j].v = newJson.table.rows[i].c[j].f
+            }
+          }
+        }
+
+      }
+
+      for (let key in gradedColumns) {
+        let num = newJson.table.rows[i].c[key];
+        if (num && gradedColumns[key]) {
+          total += Number(num.v);
+        }
+
+      }
+
+
+      let average = total / length;
+      let standard = (average / maxPointsPerQuestion) >= 0.8 ? {v: 'Exceeds', color: 'green'} : (average/ maxPointsPerQuestion) >= 0.5 ? {v: 'Meets', color: 'yellow'} : {v: 'Not Met', color: 'red'};
+      average = isNaN(average) ? ' ' : average;
+      newJson.table.rows[i].c.push({v: total})
+      newJson.table.rows[i].c.push({v: average})
+      newJson.table.rows[i].c.push(standard)
+      
+    }
+
+    setRefactoredJson(newJson);
+  }
+
+  const debouncedRefactorJson = _.debounce((json) => {
+    refactorJson(json)
+  }, 1000);
+
+  useEffect(() => {
     let elements = spreadsheetUrl.split('/');
 
     for (let i = 0; i < elements.length; i++) {
@@ -83,47 +160,24 @@ const App = () => {
     if (json) {
 
       let letters = [];
+      let columns = {};
       for (let i = 0; i < json.table.cols.length; i++) {
-        letters.push(convertIdxToLetter(i));
+        letters.push(json.table.cols[i].id);
+        columns[i] = false;
       }
       setColumnLetters(letters);
+      setGradedColumns(columns);
+    }
+  }, [json]);
 
-      let newJson = json;
-      for (let i = 0; i < newJson.table.rows.length; i++) {
-        let total = 0;
+  useEffect(() => {
 
-        for (let j = 0; j < newJson.table.rows[i].c.length; j++) {
-
-          if (newJson.table.rows[i].c[i] === null) {
-            newJson.table.rows[i].c[j] = {v: null}
-          }
-
-        }
-
-        for (let k = 0; k < gradedColumns.length; k++) {
-          let num = newJson.table.rows[i].c[gradedColumns[k]];
-          if (num) {
-            total += num.v;
-          }
-
-        }
-  
-        if (firstRowIsHeader && i === 0) {
-          newJson.table.rows[i].c.push({v: 'Total'})
-          newJson.table.rows[i].c.push({v: 'Average'})
-        } else {
-          let average = total / gradedColumns.length;
-          newJson.table.rows[i].c.push({v: total})
-          newJson.table.rows[i].c.push({v: average})
-        }
-
-
-      }
-
-      setRefactoredJson(newJson)
+    if (json) {
+      debouncedRefactorJson(json);
     }
 
-  }, [json, firstRowIsHeader]);
+
+  }, [gradedColumns, maxPointsPerQuestion]);
 
   useEffect(() => {
 
@@ -166,7 +220,7 @@ const App = () => {
   }, [classIdx])
 
   useEffect(() => {
-    console.clear()
+    // console.clear()
     console.log('spreadsheetUrl', spreadsheetUrl)
     console.log('modifiedUrl', modifiedUrl)
     console.log('json', json)
@@ -178,8 +232,13 @@ const App = () => {
     console.log('columnLetters', columnLetters)
     console.log('classFilter', classFilter)
     console.log('classIdx', classIdx)
-    console.log('firstRowIsHeader', firstRowIsHeader)
-  }, [spreadsheetUrl, modifiedUrl, teacherOptions, classOptions, classFilter, teacherIdx, teacherFilter, columnLetters,json, refactoredJson, firstRowIsHeader])
+    console.log('gradedColumns', gradedColumns)
+    console.log('startOfDateRange', startOfDateRange)
+    console.log('endOfDateRange', endOfDateRange)
+    console.log('maxPointsPerQuestion', maxPointsPerQuestion)
+  }, [spreadsheetUrl, modifiedUrl, teacherOptions, classOptions, classFilter, teacherIdx, teacherFilter, columnLetters,json, refactoredJson, gradedColumns, startOfDateRange, endOfDateRange, maxPointsPerQuestion])
+
+
 
   return (
     <div>
@@ -195,17 +254,26 @@ const App = () => {
         columnLetters={columnLetters}
         teacherOptions={teacherOptions}
         classOptions={classOptions}
-        firstRowIsHeader={firstRowIsHeader}
-        setFirstRowIsHeader={setFirstRowIsHeader}
+        gradedColumns={gradedColumns}
+        setGradedColumns={handleGradedColumns}
+        startOfDateRange={startOfDateRange}
+        endOfDateRange={endOfDateRange}
+        setStartOfDateRange={debouncedSetStartOfDateRange}
+        setEndOfDateRange={debouncedSetEndOfDateRange}
+        maxDate={maxDate}
+        setDateIdx={setDateIdx}
+        setMaxPointsPerQuestion={setMaxPointsPerQuestion}
       />
       {refactoredJson && <Table
-        firstRowIsHeader={firstRowIsHeader}
         table={refactoredJson.table}
         convertIdxToLetter={convertIdxToLetter}
         teacherFilter={teacherFilter}
         teacherIdx={teacherIdx}
         classFilter={classFilter}
         classIdx={classIdx}
+        dateIdx={dateIdx}
+        startOfDateRange={startOfDateRange}
+        endOfDateRange={endOfDateRange}
       ></Table>}
     </div>
   )

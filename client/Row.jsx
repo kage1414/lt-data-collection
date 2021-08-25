@@ -6,7 +6,10 @@ const Row = (props) => {
     <tr>
       {props.row.c.map((cell, idx) => {
 
-        let style = {border: '1px solid black'};
+        let style = {border: '1px solid black', padding: '10px'};
+        if (cell.color) {
+          style['backgroundColor'] = cell.color;
+        }
         if (!cell) {
           style['textAlign'] = 'center';
         }
