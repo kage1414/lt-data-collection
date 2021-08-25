@@ -3,7 +3,7 @@ const HtmlWebpackPlugin = require('html-webpack-plugin');
 
 module.exports = {
   mode: 'production',
-  entry: './client/app.jsx',
+  entry: './client/index.jsx',
   output: {
     path: path.resolve(__dirname, 'public'),
     filename: 'public.js'
