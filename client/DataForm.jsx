@@ -152,7 +152,6 @@ const DataForm = (props) => {
           <input
           type={'checkbox'}
           onChange={(e) => {
-            console.log(e.target.checked)
             props.setMaxScore(e.target.checked)
           }}
           ></input>

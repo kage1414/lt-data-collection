@@ -29,6 +29,11 @@ const App = () => {
   let [firstNameIdx, setFirstNameIdx] = useState(0);
   let [lastNameIdx, setLastNameIdx] = useState(0);
   let [sort, setSort] = useState('Most Recent');
+  let [statistics, setStatistics] = useState({
+    'Met': 0,
+    'In Progress': 0,
+    'Not Met': 0
+  })
 
   const Sort = {
     'Most Recent': (a, b) => {
@@ -100,8 +105,6 @@ const App = () => {
       e.preventDefault();
     }
     setLoading(true)
-
-    console.log(modifiedUrl)
     
     fetch(modifiedUrl)
       .then(res => res.text())
@@ -183,7 +186,6 @@ const App = () => {
   }
 
   const refactorJson = (json) => {
-    console.log('refactoring')
     let newJson = JSON.parse(JSON.stringify(json));
     let length = 0;
 
@@ -242,28 +244,14 @@ const App = () => {
         nameString = nameString.toLowerCase();
         nameString = nameString.split(' ');
         nameString = nameString.join('');
-
-        let includesAhuatl = nameString.toLowerCase().includes('ahuatl')
         
         if (!highestScores[nameString]) {
-          if (includesAhuatl) {
-            console.log('if', nameString)
-          }
           highestScores[nameString] = {total, i};
         } else {
-          if (includesAhuatl) {
-            console.log('else', nameString)
-          }
           if (highestScores[nameString].total <= total) {
-            if (includesAhuatl) {
-              console.log('else if', nameString)
-            }
             toDelete.push(highestScores[nameString].i);
             highestScores[nameString] = {total, i};
           } else {
-            if (includesAhuatl) {
-              console.log('else else', nameString)
-            }
             toDelete.push(i);
           }
 
@@ -278,8 +266,42 @@ const App = () => {
       return !toDelete.includes(idx);
     }) : newJson.table.rows;
 
+    let stats = {
+      'Met': 0,
+      'In Progress': 0,
+      'Not Met': 0
+    };
+  
+    let startDateObject = new Date(startOfDateRange)
+    let endDateObject = new Date(endOfDateRange)
+    let startDate = Math.floor(startDateObject.getTime() / 86400000)
+    let endDate = Math.floor(endDateObject.getTime() / 86400000)
+
+    newJson.table.rows = newJson.table.rows.filter((row) => {
+
+          let rowDate = new Date(row.c[dateIdx].v)
+          rowDate = isNaN(rowDate.getTime()) ? false : Math.floor(rowDate.getTime() / 86400000);
+          let isWithinDateRange = rowDate >= startDate && rowDate <= endDate;
+          let showByTeacher = false;
+          let showByClass = false;
+          if (row.c[teacherIdx] !== null) {
+            showByTeacher = row.c[teacherIdx].v === teacherFilter || teacherFilter === 'All';
+          }
+          if (row.c[classIdx] !== null) {
+            showByClass = row.c[classIdx].v === classFilter || classFilter === 'All';
+          }
+
+          if (showByTeacher && showByClass && isWithinDateRange) {
+            let standard = row.c[row.c.length - 1].v;
+            stats[standard]++
+          }
+
+          return showByTeacher && showByClass && isWithinDateRange;
+        })
+
     newJson.table.rows.sort(Sort[sort]);
 
+    setStatistics(stats)
     setRefactoredJson(newJson);
     setLoading(false);
   }
@@ -431,6 +453,7 @@ const App = () => {
         endOfDateRange={endOfDateRange}
         exportTable={exportTable}
         setLoading={setLoading}
+        statistics={statistics}
       ></Table>}
     </div>
   )
