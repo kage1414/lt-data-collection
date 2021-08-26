@@ -238,9 +238,12 @@ const DataForm = (props) => {
         </select>
         <br/>
         <button
+          style={{
+            backgroundColor: 'white'
+          }}
         onClick={() => {
           props.filter();
-        }}>{'Filter'}
+        }}>{'Filter / Refresh'}
         </button>
       </form>
     </div>
