@@ -4,7 +4,6 @@ import Table from './Table.jsx';
 import moment from 'moment';
 import _ from 'lodash';
 import { useCookies } from 'react-cookie';
-// import $ from 'jquery';
 
 const App = () => {
   const [cookies, setCookie] = useCookies(['lawrenceNorthSux'])
@@ -23,32 +22,115 @@ const App = () => {
   let [gradedColumns, setGradedColumns] = useState({});
   let [startOfDateRange, setStartOfDateRange] = useState(moment(Date.now() - 2592000000).format('YYYY-MM-DD'));
   let [endOfDateRange, setEndOfDateRange] = useState(moment(Date.now()).format('YYYY-MM-DD'))
-  let [maxDate, setMaxDate] = useState(moment(Date.now()).format('YYYY-MM-DD'))
   let [dateIdx, setDateIdx] = useState(0);
   let [maxPointsPerQuestion, setMaxPointsPerQuestion] = useState(cookies.maxPointsPerQuestion || 3);
   let [loading, setLoading] = useState(false);
-  let [statistics, setStatistics] = useState({
-    'Meets': 0,
-    'Exceeds': 0,
-    'Not Met': 0
-  });
+  let [maxScore, setMaxScore] = useState(false);
+  let [firstNameIdx, setFirstNameIdx] = useState(0);
+  let [lastNameIdx, setLastNameIdx] = useState(0);
+  let [sort, setSort] = useState('Most Recent');
+
+  const Sort = {
+    'Most Recent': (a, b) => {
+      let timeA = new Date(a.c[dateIdx].v);
+      let timeB = new Date(b.c[dateIdx].v);
+
+      if (timeA.getTime() < timeB.getTime()) {
+        return -1;
+      }
+      if (timeA.getTime() > timeB.getTime()) {
+        return 1;
+      }
+      return 0;
+    },
+    'Least Recent': (a, b) => {
+      let timeA = new Date(a.c[dateIdx].v);
+      let timeB = new Date(b.c[dateIdx].v);
+
+      if (timeA.getTime() > timeB.getTime()) {
+        return -1;
+      }
+      if (timeA.getTime() < timeB.getTime()) {
+        return 1;
+      }
+      return 0;
+    },
+    'Last Name': (a, b) => {
+      let nameA = a.c[lastNameIdx].v;
+      let nameB = b.c[lastNameIdx].v;
+
+      if (nameA < nameB) {
+        return -1;
+      }
+      if (nameA > nameB) {
+        return 1;
+      }
+      return 0;
+    },
+    'Class': (a, b) => {
+      let classA = a.c[classIdx].v;
+      let classB = b.c[classIdx].v;
+
+      if (classA < classB) {
+        return -1;
+      }
+      if (classA > classB) {
+        return 1;
+      }
+      return 0;
+    },
+    'Teacher': (a, b) => {
+      let teacherA = a.c[teacherIdx].v;
+      let teacherB = b.c[teacherIdx].v;
+
+      if (teacherA < teacherB) {
+        return -1;
+      }
+      if (teacherA > teacherB) {
+        return 1;
+      }
+      return 0;
+    }
+  }
+
+  const maxDate = moment(Date.now()).format('YYYY-MM-DD')
   
-  const handleSubmit = (e) => {
-    e.preventDefault();
+  const handleSubmit = async (e) => {
+    if (e) {
+      e.preventDefault();
+    }
     setLoading(true)
+
+    console.log(modifiedUrl)
     
     fetch(modifiedUrl)
-    .then(res => res.text())
-    .then(text => {
-      const responseJson = JSON.parse(text.substr(47).slice(0, -2));
-      setJson(responseJson);
-    })
+      .then(res => res.text())
+      .then(async text => {
+        const responseJson = await JSON.parse(text.substr(47).slice(0, -2));
+        return await setJson(responseJson);
+      })
+      .then(async () => {
+        if (json) {
+          return await debouncedRefactorJson(json);
+        }
+        return
+      })
+      .catch((err) => {
+        if (err) {
+          console.log(err);
+        }
+        setLoading(false);
+      })
     
   }
 
-  const debouncedSetRefactoredJson = _.debounce((json) => {
-    return setRefactoredJson(json);
-  }, 1000);
+  const filter = () => {
+
+    if (json) {
+        debouncedRefactorJson(json);
+      }
+
+  }
 
   const debouncedSetStartOfDateRange = _.debounce((date) => {
     setStartOfDateRange(date);
@@ -101,19 +183,18 @@ const App = () => {
   }
 
   const refactorJson = (json) => {
+    console.log('refactoring')
     let newJson = JSON.parse(JSON.stringify(json));
     let length = 0;
-    let newStats = {
-      'Met': 0,
-      'In Progress': 0,
-      'Not Met': 0
-    };
 
     for (let key in gradedColumns) {
       if (gradedColumns[key]) {
         length++;
       }
     }
+
+    let highestScores = {};
+    let toDelete = [];
 
     newJson.table.cols.push({label: 'Total', id: convertIdxToLetter(newJson.table.cols.length)})
     newJson.table.cols.push({label: 'Average', id: convertIdxToLetter(newJson.table.cols.length + 1)})
@@ -148,17 +229,58 @@ const App = () => {
 
 
       let average = total / length;
-      let standard = (average / maxPointsPerQuestion) >= 0.8 ? {v: 'Met', color: 'green'} : (average/ maxPointsPerQuestion) >= 0.5 ? {v: 'In Progress', color: 'yellow'} : {v: 'Not Met', color: 'red'};
-      newStats[standard.v]++;
+      let standard = (average / maxPointsPerQuestion) >= 0.8 ? {v: 'Met', color: 'green', type: 'standard'} : (average/ maxPointsPerQuestion) >= 0.5 ? {v: 'In Progress', color: 'yellow', type: 'standard'} : {v: 'Not Met', color: 'red', type: 'standard'};
       average = isNaN(average) ? ' ' : average;
-      newJson.table.rows[i].c.push({v: total})
-      newJson.table.rows[i].c.push({v: average})
+      newJson.table.rows[i].c.push({v: total, type: 'total'})
+      newJson.table.rows[i].c.push({v: average, type: 'average'})
       newJson.table.rows[i].c.push(standard)
+
+
+      if (maxScore) {
+        let nameString = newJson.table.rows[i].c[firstNameIdx].v + newJson.table.rows[i].c[lastNameIdx].v + newJson.table.rows[i].c[teacherIdx].v + newJson.table.rows[i].c[classIdx].v;
+        
+        nameString = nameString.toLowerCase();
+        nameString = nameString.split(' ');
+        nameString = nameString.join('');
+
+        let includesAhuatl = nameString.toLowerCase().includes('ahuatl')
+        
+        if (!highestScores[nameString]) {
+          if (includesAhuatl) {
+            console.log('if', nameString)
+          }
+          highestScores[nameString] = {total, i};
+        } else {
+          if (includesAhuatl) {
+            console.log('else', nameString)
+          }
+          if (highestScores[nameString].total <= total) {
+            if (includesAhuatl) {
+              console.log('else if', nameString)
+            }
+            toDelete.push(highestScores[nameString].i);
+            highestScores[nameString] = {total, i};
+          } else {
+            if (includesAhuatl) {
+              console.log('else else', nameString)
+            }
+            toDelete.push(i);
+          }
+
+        }
+
+      }
+
       
     }
 
+    newJson.table.rows = maxScore ? newJson.table.rows.filter((row, idx) => {
+      return !toDelete.includes(idx);
+    }) : newJson.table.rows;
+
+    newJson.table.rows.sort(Sort[sort]);
+
     setRefactoredJson(newJson);
-    setStatistics(newStats);
     setLoading(false);
   }
 
@@ -191,17 +313,10 @@ const App = () => {
       }
       setColumnLetters(letters);
       setGradedColumns(columns);
-    }
-  }, [json]);
 
-  useEffect(() => {
-
-    if (json) {
       debouncedRefactorJson(json);
     }
-
-
-  }, [gradedColumns, maxPointsPerQuestion, startOfDateRange, endOfDateRange]);
+  }, [json]);
 
   useEffect(() => {
 
@@ -263,10 +378,9 @@ const App = () => {
     gradedColumns,
     startOfDateRange,
     endOfDateRange,
-    maxPointsPerQuestion
+    maxPointsPerQuestion,
+    maxScore
   ])
-
-
 
   return (
     <div>
@@ -297,6 +411,13 @@ const App = () => {
         spreadsheetUrl={spreadsheetUrl}
         teacherFilter={teacherFilter}
         classFilter={classFilter}
+        maxScore={maxScore}
+        setMaxScore={setMaxScore}
+        setFirstNameIdx={setFirstNameIdx}
+        setLastNameIdx={setLastNameIdx}
+        setSort={setSort}
+        filter={filter}
+        cookies={cookies}
       />
       {refactoredJson && <Table
         table={refactoredJson.table}
@@ -308,8 +429,8 @@ const App = () => {
         dateIdx={dateIdx}
         startOfDateRange={startOfDateRange}
         endOfDateRange={endOfDateRange}
-        statistics={statistics}
         exportTable={exportTable}
+        setLoading={setLoading}
       ></Table>}
     </div>
   )

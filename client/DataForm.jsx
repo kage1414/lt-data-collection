@@ -2,8 +2,6 @@ import React from 'react';
 
 const DataForm = (props) => {
 
-  let counter = 0;
-
   return (
   <div style={{display: 'flex', flexDirection: 'row', justifyContent: 'flex-start'}}>
     <div style={{border: '1px solid black', borderRadius: '5px', padding: '5px', backgroundColor: '#FF9AA2', margin: '5px'}}>
@@ -82,10 +80,40 @@ const DataForm = (props) => {
           })}
         </select>
         <br/>
+        <label
+          name={'First Name Column'}
+          htmlFor={'firstNameColumn'}>
+            {'First Name Column: '}
+        </label>
+        <select
+          id={'firstNameColumn'}
+          onChange={(e) => {
+            let idx = props.convertLetterToIdx(e.target.value);
+            props.setFirstNameIdx(idx);
+          }}>
+            {props.columnLetters.map((letter, idx) => {
+              return <option key={JSON.stringify(letter + idx)} value={letter}>{letter}</option>
+            })}
+        </select>
+        <label
+          name={'Last Name Column'}
+          htmlFor={'lastNameColumn'}>
+            {'Last Name Column: '}
+        </label>
+        <select
+          id={'lastNameColumn'}
+          onChange={(e) => {
+            let idx = props.convertLetterToIdx(e.target.value);
+            props.setLastNameIdx(idx);
+          }}>
+            {props.columnLetters.map((letter, idx) => {
+              return <option key={JSON.stringify(letter + idx)} value={letter}>{letter}</option>
+            })}
+        </select>
+        <br/>
         <span>{'Select graded columns:'}</span>
         <br/>
         {props.columnLetters.map((letter, idx) => {
-          counter++
           return <span key={JSON.stringify(letter + idx)}
           style={{border: '1px black solid', padding: '3px', marginRight: '-1px'}}>
               <label
@@ -115,6 +143,20 @@ const DataForm = (props) => {
             props.setMaxPointsPerQuestion(Number(e.target.value))
           }}>
         </input>
+        <div style={{border: '1px solid black', borderRadius: '5px', padding: '5px'}}>
+          <div>{'(optional)'}</div>
+          <label
+          htmlFor={'maxScores'}>
+            {' Only Show Max Score Per Student'}
+          </label>
+          <input
+          type={'checkbox'}
+          onChange={(e) => {
+            console.log(e.target.checked)
+            props.setMaxScore(e.target.checked)
+          }}
+          ></input>
+        </div>
       </form>
       <br/>
     </div>
@@ -182,6 +224,25 @@ const DataForm = (props) => {
             props.setEndOfDateRange(e.target.value)
           }}>
         </input>
+          <br/>
+          <label htmlFor={'sort'}>{'Sort: '}</label>
+        <select
+          defaultValue={props.sort}
+          onChange={(e) => {
+            props.setSort(e.target.value);
+          }}>
+          <option value={'Most Recent'}>{'Most Recent'}</option>
+          <option value={'Least Recent'}>{'Least Recent'}</option>
+          <option value={'Last Name'}>{'Last Name'}</option>
+          <option value={'Class'}>{'Class'}</option>
+          <option value={'Teacher'}>{'Teacher'}</option>
+        </select>
+        <br/>
+        <button
+        onClick={() => {
+          props.filter();
+        }}>{'Filter'}
+        </button>
       </form>
     </div>
   </div>

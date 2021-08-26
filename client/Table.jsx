@@ -1,8 +1,16 @@
-import React from 'react';
+import React, { useState } from 'react';
 import Row from './Row.jsx';
 import Statistics from './Statistics.jsx';
 
 const Table = (props) => {
+
+  console.log('table', props)
+
+  let statistics = {
+    'Met': 0,
+    'In Progress': 0,
+    'Not Met': 0
+  };
 
   let headers = props.table.cols;
   let body = props.table.rows;
@@ -20,7 +28,7 @@ const Table = (props) => {
     }}>Export</button>
     <table id={'dataTable'}>
       <thead>
-        <Statistics statistics={props.statistics}/>
+        <Statistics statistics={statistics}/>
         <tr>
           {headers.map((header, idx) => {
             return <th key={JSON.stringify(props.convertIdxToLetter(idx) + idx)} style={{border: '1px solid black', backgoundColor: '#c7c7c7', padding: '10px'}}>{header.id}</th>
@@ -54,9 +62,17 @@ const Table = (props) => {
             showByClass = row.c[props.classIdx].v === props.classFilter || props.classFilter === 'All';
           }
 
+          if (showByTeacher && showByClass && isWithinDateRange) {
+            let standard = row.c[row.c.length - 1].v;
+            statistics[standard]++
+          }
+
           return showByTeacher && showByClass && isWithinDateRange;
         }).map((row, idx) => {
-          return <Row key={JSON.stringify(row + idx)} row={row}></Row>
+          return <Row
+          key={JSON.stringify(row + idx)}
+          idx={idx}
+          row={row}></Row>
         })}
       </tbody>
     </table>
