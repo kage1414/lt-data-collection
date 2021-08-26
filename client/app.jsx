@@ -4,6 +4,7 @@ import Table from './Table.jsx';
 import moment from 'moment';
 import _ from 'lodash';
 import { useCookies } from 'react-cookie';
+// import $ from 'jquery';
 
 const App = () => {
   const [cookies, setCookie] = useCookies(['lawrenceNorthSux'])
@@ -61,6 +62,10 @@ const App = () => {
 
     return `https://docs.google.com/spreadsheets/d/${url}/gviz/tq?tqx=out:json`;
 
+  }
+
+  const exportTable = () => {
+    $('#dataTable').first().table2csv()
   }
 
   const convertIdxToLetter = (idx) => {
@@ -239,7 +244,7 @@ const App = () => {
   }, [classIdx])
 
   useEffect(() => {
-     setCookie('spreadsheetUrl', spreadsheetUrl, { path: '/' });
+    setCookie('spreadsheetUrl', spreadsheetUrl, { path: '/' });
     setCookie('modifiedUrl', modifiedUrl, { path: '/' });
     setCookie('teacherOptions', teacherOptions, { path: '/' });
     setCookie('classOptions', classOptions, { path: '/' });
@@ -304,6 +309,7 @@ const App = () => {
         startOfDateRange={startOfDateRange}
         endOfDateRange={endOfDateRange}
         statistics={statistics}
+        exportTable={exportTable}
       ></Table>}
     </div>
   )

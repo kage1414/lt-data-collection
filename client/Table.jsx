@@ -17,8 +17,8 @@ const Table = (props) => {
     <>
     <button onClick={() => {
       props.exportTable();
-    }}></button>
-    <table id={'exportTable'}>
+    }}>Export</button>
+    <table id={'dataTable'}>
       <thead>
         <Statistics statistics={props.statistics}/>
         <tr>
