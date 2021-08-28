@@ -35,7 +35,7 @@ const DataForm = (props) => {
     </div>
     <div style={{border: '1px solid black', borderRadius: '5px', padding: '5px', backgroundColor: '#B5EAD7', margin: '5px'}}>
       <div>{'Filter Parameters'}</div>
-      <form onSubmit={props.handleSubmit}>
+      <form>
         <label
           name={'Teacher Column'}
           htmlFor={'teacherColumn'}>
@@ -161,7 +161,7 @@ const DataForm = (props) => {
     </div>
     <div style={{border: '1px solid black', borderRadius: '5px', padding: '5px', margin: '5px', backgroundColor: '#ebedeb'}}>
       <div>{'Filter:'}</div>
-      <form onSubmit={props.handleSubmit}>
+      <form>
         <label
           name={'Teacher'}
           htmlFor={'chooseTeacher'}>
@@ -241,7 +241,9 @@ const DataForm = (props) => {
           style={{
             backgroundColor: 'white'
           }}
-        onClick={() => {
+        onClick={(e) => {
+          e.preventDefault();
+          props.setLoading(true);
           props.filter();
         }}>{'Filter / Refresh'}
         </button>

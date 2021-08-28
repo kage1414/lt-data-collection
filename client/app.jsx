@@ -130,6 +130,7 @@ const App = () => {
   const filter = () => {
 
     if (json) {
+        setLoading(true);
         debouncedRefactorJson(json);
       }
 
@@ -325,6 +326,7 @@ const App = () => {
   }, [spreadsheetUrl]);
 
   useEffect(() => {
+    console.log('json changed')
     if (json) {
 
       let letters = [];
@@ -440,6 +442,8 @@ const App = () => {
         setSort={setSort}
         filter={filter}
         cookies={cookies}
+        statistics={statistics}
+        setLoading={setLoading}
       />
       {refactoredJson && <Table
         table={refactoredJson.table}

@@ -40,7 +40,8 @@
   "scripts": {
     "react-dev": "webpack -w --mode development",
     "build": "webpack",
-    "start": "webpack && node server.js"
+    "start": "webpack && node server.js",
+    "server-dev": "nodemon server.js"
   },
   "eslintConfig": {
     "extends": [
